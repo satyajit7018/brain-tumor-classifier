@@ -6,8 +6,7 @@ evidence on its own.
 import json
 
 import numpy as np
-import tensorflow as tf
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 
 from src.models.baseline_cnn import build_baseline_cnn
 from src.models.transfer_models import build_resnet50, build_efficientnet_b0
@@ -23,10 +22,10 @@ def run_kfold(model_name: str, images: np.ndarray, labels: np.ndarray, k: int = 
     if model_name not in MODEL_BUILDERS:
         raise ValueError(f"Unknown model: {model_name}")
 
-    kf = KFold(n_splits=k, shuffle=True, random_state=42)
+    kf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
     fold_accuracies = []
 
-    for fold_idx, (train_idx, val_idx) in enumerate(kf.split(images)):
+    for fold_idx, (train_idx, val_idx) in enumerate(kf.split(images, labels)):
         print(f"Fold {fold_idx + 1}/{k}")
         model = MODEL_BUILDERS[model_name]()
 

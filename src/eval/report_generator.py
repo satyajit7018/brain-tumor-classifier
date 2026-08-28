@@ -131,8 +131,7 @@ def generate_clinical_pdf_report(
     clinical_status = prediction_data.get("clinical_status", "LOW_RISK_CONFIDENT")
 
     # Status color code
-    status_bg = colors.HexColor("#DCFCE7") if "LOW" in clinical_status else colors.HexColor("#FEF3C7")
-    status_text_color = colors.HexColor("#166534") if "LOW" in clinical_status else colors.HexColor("#92400E")
+    status_text_color = "#166534" if "LOW" in clinical_status else ("#B45309" if "MODERATE" in clinical_status else "#991B1B")
 
     findings_data = [
         [
@@ -149,7 +148,7 @@ def generate_clinical_pdf_report(
         ],
         [
             Paragraph("<b>Clinical Review Status:</b>", body_style),
-            Paragraph(f"<b><font color='{status_text_color.hexval()}'>{clinical_status}</font></b>", body_style),
+            Paragraph(f"<b><font color='{status_text_color}'>{clinical_status}</font></b>", body_style),
         ],
     ]
     findings_table = Table(findings_data, colWidths=[160, 370])

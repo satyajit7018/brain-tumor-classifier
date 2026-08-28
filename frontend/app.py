@@ -161,7 +161,8 @@ if uploaded_file is not None:
                     st.markdown("---")
                     st.subheader("Export Case Report")
                     with st.spinner("Compiling PDF summary..."):
-                        report_resp = requests.post(f"{api_url}/report", files=files, timeout=15)
+                        report_files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+                        report_resp = requests.post(f"{api_url}/report", files=report_files, timeout=15)
                         if report_resp.status_code == 200:
                             st.download_button(
                                 label="Download Clinical Diagnostic Report (PDF)",

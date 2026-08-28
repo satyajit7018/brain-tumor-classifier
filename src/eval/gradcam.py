@@ -140,7 +140,12 @@ def overlay_heatmap(original_img: np.ndarray, heatmap: np.ndarray, alpha: float 
     heatmap_uint8 = np.uint8(255 * heatmap_resized)
     heatmap_color = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
 
-    original_uint8 = np.uint8(original_img * 255) if original_img.max() <= 1.0 else original_img.astype(np.uint8)
+    if np.issubdtype(original_img.dtype, np.floating):
+        original_uint8 = np.uint8(np.clip(original_img * 255.0, 0, 255))
+    else:
+        original_uint8 = original_img.astype(np.uint8)
+
     overlaid = cv2.addWeighted(original_uint8, 1 - alpha, heatmap_color, alpha, 0)
     return overlaid
+
 
