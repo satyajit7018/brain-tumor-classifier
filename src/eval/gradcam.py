@@ -8,9 +8,56 @@ import numpy as np
 import tensorflow as tf
 
 
-def make_gradcam_heatmap(img_array: np.ndarray, model: tf.keras.Model, last_conv_layer_name: str, pred_index=None):
+def find_target_conv_layer(model: tf.keras.Model, layer_name: str = None):
+    """Locate the target conv layer or feature map tensor in the model,
+    searching top-level layers and nested sub-models.
+    """
+    if layer_name:
+        # Check direct model layers
+        try:
+            layer = model.get_layer(layer_name)
+            return layer.output
+        except (ValueError, AttributeError):
+            pass
+
+        # Check submodel layers (e.g. ResNet50 / EfficientNet submodels)
+        for layer in model.layers:
+            if isinstance(layer, tf.keras.Model) or hasattr(layer, "layers"):
+                try:
+                    sub_layer = layer.get_layer(layer_name)
+                    # To get output in outer model context:
+                    return layer.output
+                except (ValueError, AttributeError):
+                    pass
+
+    # Automatic fallback: find the last 4D conv/feature map layer
+    for layer in reversed(model.layers):
+        if hasattr(layer, "output") and len(getattr(layer.output, "shape", [])) == 4:
+            return layer.output
+        if isinstance(layer, tf.keras.Model) or hasattr(layer, "layers"):
+            for sub_layer in reversed(layer.layers):
+                if hasattr(sub_layer, "output") and len(getattr(sub_layer.output, "shape", [])) == 4:
+                    return layer.output
+
+    raise ValueError(f"Could not find a convolutional feature map layer in {model.name}")
+
+
+def make_gradcam_heatmap(img_array: np.ndarray, model: tf.keras.Model, last_conv_layer_name: str = None, pred_index=None):
+    """Generate Grad-CAM heatmap showing where the model attended.
+    Args:
+        img_array: Preprocessed input tensor of shape (1, H, W, 3)
+        model: Trained Keras model
+        last_conv_layer_name: Optional name of the target conv layer
+        pred_index: Optional target class index (defaults to argmax prediction)
+    Returns:
+        heatmap: 2D numpy array normalized to [0.0, 1.0]
+        pred_index: Class index evaluated
+    """
+    target_output_tensor = find_target_conv_layer(model, last_conv_layer_name)
+
     grad_model = tf.keras.models.Model(
-        [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
+        inputs=model.inputs,
+        outputs=[target_output_tensor, model.output]
     )
 
     with tf.GradientTape() as tape:
@@ -37,3 +84,4 @@ def overlay_heatmap(original_img: np.ndarray, heatmap: np.ndarray, alpha: float 
     original_uint8 = np.uint8(original_img * 255) if original_img.max() <= 1.0 else original_img.astype(np.uint8)
     overlaid = cv2.addWeighted(original_uint8, 1 - alpha, heatmap_color, alpha, 0)
     return overlaid
+
