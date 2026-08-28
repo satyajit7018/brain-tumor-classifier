@@ -10,3 +10,7 @@ numpy
 pandas
 python-dotenv
 python-multipart
+reportlab
+httpx
+
+
