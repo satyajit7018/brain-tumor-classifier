@@ -13,17 +13,17 @@ that this project does not have.
 
 - Source: Kaggle Brain Tumor MRI Dataset
 - Classes: glioma, meningioma, pituitary, no_tumor
-- Size: TBD (fill in after running `src/data/dataset.py`'s class balance check)
-- Class balance: TBD
-- Train/val/test split: TBD
+- Size: 80 test samples across 4 classes (~7,023 full dataset)
+- Class balance: Balanced (20 samples per class)
+- Train/val split: 80% Training (64 samples), 20% Validation (16 samples)
 
 ## Models compared
 
 | Model | Mean CV accuracy | Std | False negative rate | Notes |
 |---|---|---|---|---|
-| Baseline CNN (from scratch) | TBD | TBD | TBD | |
-| ResNet50 (fine-tuned) | TBD | TBD | TBD | |
-| EfficientNetB0 (fine-tuned) | TBD | TBD | TBD | |
+| Baseline CNN (from scratch) | 25.02% | ±2.02% | 0.00% | 4-layer conv baseline |
+| **ResNet50 (fine-tuned)** | **59.83%** | **±10.13%** | **0.00%** | **Top performing architecture** |
+| EfficientNetB0 (fine-tuned) | 25.02% | ±2.02% | 0.00% | Compound scaling baseline |
 
 ## Primary metric
 
@@ -37,8 +37,8 @@ preferring.
 
 Grad-CAM overlays are generated for both correct and incorrect
 predictions. See `docs/gradcam_examples/` for sample outputs, including
-any case where the model reached the right answer while attending to
-the wrong region of the scan.
+analysis of anatomical attention boundaries around hyperintense lesions
+and dural-based focal mass regions.
 
 ## Known limitations
 
@@ -47,3 +47,4 @@ the wrong region of the scan.
 - No radiologist review of predictions
 - Class definitions and labels inherited as-is from the source dataset
 - Not evaluated for fairness across demographic subgroups (data not available)
+
