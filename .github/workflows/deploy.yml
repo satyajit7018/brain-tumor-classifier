@@ -1,0 +1,14 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to EC2
+        run: |
+          ssh ${{ secrets.EC2_HOST }} "cd brain-tumor-classifier && git pull && docker compose up -d --build"

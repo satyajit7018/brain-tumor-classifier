@@ -1,0 +1,12 @@
+tensorflow
+opencv-python
+scikit-learn
+fastapi
+uvicorn
+streamlit
+matplotlib
+pillow
+numpy
+pandas
+python-dotenv
+python-multipart

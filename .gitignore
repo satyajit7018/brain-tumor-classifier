@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.env
+data/raw/*
+!data/raw/.gitkeep
+data/splits/*
+!data/splits/.gitkeep
+*.h5
+*.keras
+saved_models/
+.DS_Store
