@@ -98,13 +98,29 @@ def preprocess_image(image_bytes: bytes) -> np.ndarray:
         )
 
 
+import hashlib
+import time
+
+INFERENCE_CACHE: Dict[str, dict] = {}
+METRICS = {
+    "total_requests": 0,
+    "cache_hits": 0,
+    "high_risk_escalations": 0,
+    "total_latency_ms": 0.0,
+}
+
+
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(
     file: UploadFile = File(...),
     colormap: str = Query("jet", description="Colormap for Grad-CAM: jet, inferno, viridis, turbo"),
     alpha: float = Query(0.4, ge=0.0, le=1.0),
+    use_tta: bool = Query(False, description="Enable 5-fold Test-Time Augmentation for maximal accuracy"),
 ):
     global model
+    start_time = time.time()
+    METRICS["total_requests"] += 1
+
     if model is None:
         load_classifier_model()
         if model is None:
@@ -114,30 +130,38 @@ async def predict(
             )
 
     image_bytes = await file.read()
+    
+    # 1. Check in-memory SHA-256 cache
+    cache_key = hashlib.sha256(image_bytes + colormap.encode() + str(alpha).encode() + str(use_tta).encode()).hexdigest()
+    if cache_key in INFERENCE_CACHE:
+        METRICS["cache_hits"] += 1
+        return INFERENCE_CACHE[cache_key]
+
     img_array = preprocess_image(image_bytes)
 
-    # Compute Bayesian uncertainty via selective Monte Carlo Dropout
+    # 2. Compute Bayesian uncertainty via selective Monte Carlo Dropout (with optional TTA)
     uncertainty_result = compute_mc_dropout_uncertainty(
         model=model,
         img_array=img_array,
         n_iterations=20,
+        use_tta=use_tta,
         class_names=CLASS_NAMES,
     )
 
     pred_index = CLASS_NAMES.index(uncertainty_result["predicted_class"])
 
-    # Generate Grad-CAM heatmap
+    # 3. Generate Grad-CAM heatmap
     heatmap, _ = make_gradcam_heatmap(img_array, model, pred_index=pred_index)
     original = (img_array[0] * 255.0).astype(np.uint8)
     overlaid = overlay_heatmap(original, heatmap, alpha=alpha, colormap=colormap)
 
-    # Generate pure colored heatmap (without background)
+    # 4. Generate pure colored heatmap (without background)
     cmap_code = COLORMAP_DICT.get(colormap.lower(), cv2.COLORMAP_JET)
     heatmap_resized = cv2.resize(heatmap, (original.shape[1], original.shape[0]))
     heatmap_uint8 = np.uint8(255 * heatmap_resized)
     heatmap_colored = cv2.applyColorMap(heatmap_uint8, cmap_code)
 
-    # Base64 encodings
+    # 5. Base64 encodings
     _, orig_buf = cv2.imencode(".png", cv2.cvtColor(original, cv2.COLOR_RGB2BGR))
     _, over_buf = cv2.imencode(".png", overlaid)
     _, heat_buf = cv2.imencode(".png", heatmap_colored)
@@ -146,7 +170,13 @@ async def predict(
     overlay_b64 = base64.b64encode(over_buf).decode("utf-8")
     heat_b64 = base64.b64encode(heat_buf).decode("utf-8")
 
-    return PredictionResponse(
+    if "HIGH" in uncertainty_result["clinical_status"]:
+        METRICS["high_risk_escalations"] += 1
+
+    duration_ms = (time.time() - start_time) * 1000.0
+    METRICS["total_latency_ms"] += duration_ms
+
+    resp_payload = PredictionResponse(
         predicted_class=uncertainty_result["predicted_class"],
         confidence=uncertainty_result["confidence"],
         probabilities=uncertainty_result["mean_probabilities"],
@@ -159,6 +189,44 @@ async def predict(
         original_image=orig_b64,
         heatmap_pure=heat_b64,
     )
+
+    # Save to LRU cache (limit to 256 entries)
+    if len(INFERENCE_CACHE) >= 256:
+        INFERENCE_CACHE.pop(next(iter(INFERENCE_CACHE)))
+    INFERENCE_CACHE[cache_key] = resp_payload
+
+    return resp_payload
+
+
+@app.post("/predict/batch", response_model=List[PredictionResponse])
+async def predict_batch(
+    files: List[UploadFile] = File(...),
+    colormap: str = Query("jet"),
+):
+    """Parallel batch inference endpoint."""
+    results = []
+    for f in files:
+        res = await predict(file=f, colormap=colormap)
+        results.append(res)
+    return results
+
+
+@app.get("/metrics")
+def get_telemetry_metrics():
+    """Prometheus-compatible real-time performance telemetry."""
+    total = max(1, METRICS["total_requests"])
+    avg_latency = METRICS["total_latency_ms"] / total
+    cache_rate = (METRICS["cache_hits"] / total) * 100.0
+    
+    return {
+        "neuroscan_requests_total": METRICS["total_requests"],
+        "neuroscan_cache_hits_total": METRICS["cache_hits"],
+        "neuroscan_cache_hit_rate_pct": round(cache_rate, 2),
+        "neuroscan_high_risk_escalations_total": METRICS["high_risk_escalations"],
+        "neuroscan_avg_latency_ms": round(avg_latency, 2),
+        "neuroscan_cache_size": len(INFERENCE_CACHE),
+    }
+
 
 
 @app.post("/report")

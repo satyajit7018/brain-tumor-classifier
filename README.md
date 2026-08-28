@@ -68,7 +68,7 @@ Actual No Tumor             7                  1                     3          
 ├── frontend/
 │   ├── app.py                  # Streamlit diagnostic interface
 │   └── web/                    # Standalone PACS Single-Page Web Application
-├── tests/                      # Unit & integration test suite (14 tests)
+├── tests/                      # Unit & integration test suite (17 tests)
 ├── docs/                       # Model cards, build plan, and evaluation artifacts
 └── Dockerfile                  # Container definition
 ```
@@ -146,9 +146,11 @@ Open **`http://localhost:8501`** for the tri-view Grad-CAM analysis and multi-mo
 ### API Endpoints
 - `GET /`: Serves the interactive standalone PACS web application.
 - `GET /health`: Service health status, active weights, and enabled capabilities.
+- `GET /metrics`: Prometheus-compatible real-time performance telemetry.
 - `GET /classes`: Target class mapping dictionary.
 - `GET /samples`: Preloaded authentic MRI scans for 1-click zero-friction testing.
-- `POST /predict`: Multi-class classification with colormap selection (`jet`, `inferno`, `viridis`, `turbo`), predictive entropy, epistemic uncertainty, and base64 Grad-CAM overlay.
+- `POST /predict`: Multi-class classification with in-memory caching, 5-fold TTA option (`use_tta=true`), colormap selection (`jet`, `inferno`, `viridis`, `turbo`), predictive entropy, epistemic uncertainty, and base64 Grad-CAM overlay.
+- `POST /predict/batch`: Parallel batch inference endpoint for multi-scan processing.
 - `POST /report`: Compiles and streams a downloadable clinical PDF diagnostic report.
 - `POST /triage`: Simulates emergency department multi-patient cohort prioritization.
 
@@ -161,6 +163,7 @@ Build and start the containerized service:
 docker compose up -d --build
 ```
 The API and PACS Web Console are available at `http://localhost:8000`.
+
 
 
 

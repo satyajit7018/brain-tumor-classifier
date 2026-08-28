@@ -12,13 +12,15 @@ def compute_mc_dropout_uncertainty(
     model: tf.keras.Model,
     img_array: np.ndarray,
     n_iterations: int = 20,
+    use_tta: bool = False,
     class_names: List[str] = None,
 ) -> Dict[str, Any]:
-    """Execute Monte Carlo Dropout inference across n_iterations.
+    """Execute Monte Carlo Dropout inference across n_iterations with optional Test-Time Augmentation (TTA).
     Args:
         model: Trained Keras model with Dropout layer(s)
         img_array: Preprocessed image tensor of shape (1, 224, 224, 3) in [0.0, 1.0]
         n_iterations: Number of stochastic passes (default: 20)
+        use_tta: If True, applies 5-fold test-time augmentation (original, hflip, zoom, brightness shifts)
         class_names: List of class labels (e.g. ['glioma', 'meningioma', 'pituitary', 'no_tumor'])
     Returns:
         Dictionary containing mean probabilities, standard deviations, predictive entropy,
@@ -28,7 +30,20 @@ def compute_mc_dropout_uncertainty(
         class_names = ["glioma", "meningioma", "pituitary", "no_tumor"]
 
     # 1. Deterministic base inference (BatchNorm in inference mode)
-    base_pred = model(img_array, training=False).numpy()[0]
+    if use_tta:
+        # 5-fold Test-Time Augmentation
+        tta_inputs = [
+            img_array,
+            np.fliplr(img_array[0])[np.newaxis, ...],
+            np.clip(img_array * 1.05, 0.0, 1.0),
+            np.clip(img_array * 0.95, 0.0, 1.0),
+            np.rot90(img_array[0], k=1, axes=(0, 1))[np.newaxis, ...],
+        ]
+        tta_preds = [model(inp, training=False).numpy()[0] for inp in tta_inputs]
+        base_pred = np.mean(tta_preds, axis=0)
+    else:
+        base_pred = model(img_array, training=False).numpy()[0]
+
     num_classes = len(class_names)
 
     # 2. Selective Monte Carlo Dropout passes (keeping BatchNorm in inference mode)
@@ -40,9 +55,7 @@ def compute_mc_dropout_uncertainty(
 
     if has_dropout_head:
         try:
-            # Find the dropout layer index
             dropout_idx = max(i for i, l in enumerate(model.layers) if isinstance(l, (tf.keras.layers.Dropout, tf.keras.layers.SpatialDropout2D)))
-            # Feature extraction with BatchNorm in inference mode
             x = img_array
             for layer in model.layers[1:dropout_idx]:
                 x = layer(x, training=False)
@@ -58,6 +71,7 @@ def compute_mc_dropout_uncertainty(
                 predictions.append(h.numpy()[0])
         except Exception:
             predictions = []
+
 
     if len(predictions) == 0:
         # Robust fallback: stochastic perturbation on pre-softmax logits
