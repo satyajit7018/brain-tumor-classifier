@@ -23,6 +23,40 @@ class TestAPIModule(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["classes"], CLASS_NAMES)
 
+    def test_predict_endpoint_contract(self):
+        import io
+        from PIL import Image
+        img = Image.new("RGB", (224, 224), color=(128, 128, 128))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        buf.seek(0)
+
+        response = self.client.post("/predict", files={"file": ("test.jpg", buf, "image/jpeg")})
+        # If model exists it returns 200 with complete clinical schema; if not loaded 503
+        self.assertIn(response.status_code, [200, 503])
+        if response.status_code == 200:
+            data = response.json()
+            self.assertIn("predicted_class", data)
+            self.assertIn("confidence", data)
+            self.assertIn("probabilities", data)
+            self.assertIn("epistemic_uncertainty", data)
+            self.assertIn("gradcam_overlay", data)
+
+    def test_report_endpoint_contract(self):
+        import io
+        from PIL import Image
+        img = Image.new("RGB", (224, 224), color=(128, 128, 128))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        buf.seek(0)
+
+        response = self.client.post("/report", files={"file": ("test.jpg", buf, "image/jpeg")})
+        self.assertIn(response.status_code, [200, 503])
+        if response.status_code == 200:
+            self.assertEqual(response.headers.get("content-type"), "application/pdf")
+            self.assertGreater(len(response.content), 1000)
+
 
 if __name__ == "__main__":
     unittest.main()
+
