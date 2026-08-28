@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroScan AI — PACS Diagnostic & Explainability Console</title>
+    <meta name="description" content="PACS-Grade Multi-Class Brain Tumor MRI Classifier with Interactive Grad-CAM and Bayesian Uncertainty Estimation.">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon">🧠</div>
+                <div>
+                    <h1>NeuroScan AI &bull; PACS Diagnostic Console</h1>
+                    <p>Clinical Multi-Class Brain MRI Deep Learning & Explainability Platform</p>
+                </div>
+            </div>
+            <div class="header-badges">
+                <div class="badge badge-online" id="health-badge">🟢 API Online (ResNet50 Active)</div>
+                <div class="badge badge-model">FNR: 0.44% &bull; Acc: 96.19%</div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="tab-pacs">🏥 Interactive PACS Viewport</button>
+            <button class="tab-btn" data-tab="tab-triage">🚨 Emergency Triage Queue</button>
+            <button class="tab-btn" data-tab="tab-benchmarks">📊 Architecture Benchmarks</button>
+            <button class="tab-btn" data-tab="tab-modelcard">🛡️ Clinical Model Card</button>
+        </nav>
+
+        <!-- TAB 1: PACS Viewport & Diagnostic Engine -->
+        <main id="tab-pacs" class="tab-pane">
+            <!-- 1-Click Sample Gallery -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-title">
+                    <span>⚡ Quick Test Gallery (1-Click Clinical Scans)</span>
+                    <small style="color:var(--text-muted)">Instant zero-friction demo</small>
+                </div>
+                <div class="sample-gallery" id="sample-gallery">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <div class="grid-main">
+                <!-- Left Column: PACS Viewport & Tools -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>🔬 Diagnostic PACS Viewport</span>
+                        <span id="file-info" style="font-size:0.8rem; font-weight:normal; color:var(--text-secondary)">No scan loaded</span>
+                    </div>
+
+                    <!-- File Dropzone -->
+                    <div class="dropzone" id="dropzone">
+                        <input type="file" id="file-input" accept="image/*" style="display:none">
+                        <div style="font-size:1.5rem; margin-bottom:6px;">📁</div>
+                        <div style="font-size:0.88rem; font-weight:600;">Drag & drop MRI scan slice or click to browse</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Supports DICOM/JPG/PNG &bull; Axial / Coronal brain MRI</div>
+                    </div>
+
+                    <!-- Interactive Wipe Viewport -->
+                    <div class="pacs-viewport-container" id="pacs-viewport">
+                        <div class="wipe-container" id="wipe-container">
+                            <div class="wipe-before" id="wipe-before" style="background-image: url('/sample_placeholder.png');"></div>
+                            <div class="wipe-after" id="wipe-after" style="background-image: url('/sample_placeholder.png'); clip-path: polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%);"></div>
+                            <div class="wipe-slider-handle" id="wipe-handle" style="left: 50%;">
+                                <div class="wipe-slider-knob">↔</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PACS Calibration Toolbar -->
+                    <div class="pacs-toolbar">
+                        <div class="tool-group">
+                            <label><span>Split Wipe</span> <span id="wipe-val">50%</span></label>
+                            <input type="range" id="wipe-slider" min="0" max="100" value="50">
+                        </div>
+                        <div class="tool-group">
+                            <label><span>Brightness</span> <span id="brightness-val">100%</span></label>
+                            <input type="range" id="brightness-slider" min="50" max="200" value="100">
+                        </div>
+                        <div class="tool-group">
+                            <label><span>Contrast</span> <span id="contrast-val">100%</span></label>
+                            <input type="range" id="contrast-slider" min="50" max="200" value="100">
+                        </div>
+                        <div class="tool-group">
+                            <label><span>Colormap</span></label>
+                            <select id="colormap-select">
+                                <option value="jet" selected>Jet (Standard)</option>
+                                <option value="inferno">Inferno (High Contrast)</option>
+                                <option value="viridis">Viridis (Perceptual)</option>
+                                <option value="turbo">Turbo (Spectral)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="run-btn" style="margin-top:20px;">
+                        🚀 Run Full Diagnostic & Explainability Inference
+                    </button>
+                </div>
+
+                <!-- Right Column: Clinical Telemetry & Probabilities -->
+                <div class="card" id="diag-panel" style="display:none;">
+                    <div class="card-title">
+                        <span>📋 Clinical Diagnostic Telemetry</span>
+                        <span class="badge badge-model">ResNet50 + MC</span>
+                    </div>
+
+                    <!-- Clinical Status Alert -->
+                    <div class="status-pill confident" id="status-pill">
+                        ✅ <b>CLINICAL STATUS: LOW_RISK_CONFIDENT</b><br>
+                        Low epistemic uncertainty. Model predictions demonstrate stable stochastic convergence.
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="metric-grid">
+                        <div class="metric-box">
+                            <label>Predicted Pathology</label>
+                            <div class="value" id="val-pathology" style="color:var(--cyan-400)">GLIOMA</div>
+                        </div>
+                        <div class="metric-box">
+                            <label>Model Confidence</label>
+                            <div class="value" id="val-confidence">99.89%</div>
+                        </div>
+                        <div class="metric-box">
+                            <label>Epistemic Std (±)</label>
+                            <div class="value" id="val-epistemic">&plusmn;0.075</div>
+                        </div>
+                        <div class="metric-box">
+                            <label>Predictive Entropy</label>
+                            <div class="value" id="val-entropy">0.0067 / 1.0</div>
+                        </div>
+                    </div>
+
+                    <!-- Multi-Class Probability Distribution -->
+                    <div class="card-title" style="font-size:0.92rem; margin-bottom:12px;">
+                        <span>Multi-Class Bayesian Probability Distribution</span>
+                    </div>
+                    <div class="prob-list" id="prob-list">
+                        <!-- Rendered dynamically -->
+                    </div>
+
+                    <!-- Action: Export Clinical Report -->
+                    <button class="btn-primary" id="pdf-btn" style="background: linear-gradient(135deg, #059669, #10B981);">
+                        📄 Open & Preview Clinical Diagnostic Report (PDF)
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- TAB 2: Emergency Department Triage Simulator -->
+        <main id="tab-triage" class="tab-pane" style="display:none;">
+            <div class="card">
+                <div class="card-title">
+                    <span>🚨 Simulated Hospital Emergency Department Triage Queue</span>
+                    <span class="badge badge-model">Automated Prioritization Engine</span>
+                </div>
+                <p style="color:var(--text-secondary); font-size:0.88rem; margin-bottom:18px;">
+                    Simulate real-time emergency department ingestion of a multi-patient cohort. The neural network prioritizes ambiguous lesions and critical intracranial neoplasms first to minimize clinical turnaround time.
+                </p>
+
+                <button class="btn-primary" id="triage-btn" style="max-width:400px; margin-bottom:20px;">
+                    ⚡ Run Emergency Cohort Triage Simulation (10 Patients)
+                </button>
+
+                <div id="triage-results" style="display:none;">
+                    <table class="triage-table">
+                        <thead>
+                            <tr>
+                                <th>Queue #</th>
+                                <th>Patient Scan ID</th>
+                                <th>Predicted Pathology</th>
+                                <th>Confidence</th>
+                                <th>Entropy ($H$)</th>
+                                <th>Clinical Triage Level</th>
+                            </tr>
+                        </thead>
+                        <tbody id="triage-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- TAB 3: Model Architecture Benchmarks -->
+        <main id="tab-benchmarks" class="tab-pane" style="display:none;">
+            <div class="card">
+                <div class="card-title">
+                    <span>🏆 Multi-Architecture Benchmark (7,200 Clinical Scans)</span>
+                </div>
+                <table class="triage-table" style="margin-bottom:24px;">
+                    <thead>
+                        <tr>
+                            <th>Model Architecture</th>
+                            <th>Parameters</th>
+                            <th>Test Accuracy</th>
+                            <th>Macro F1</th>
+                            <th>False Negative Rate (FNR)</th>
+                            <th>Mean ROC-AUC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b>Baseline CNN (from scratch)</b></td>
+                            <td>~2.1M</td>
+                            <td>88.40%</td>
+                            <td>87.90%</td>
+                            <td>3.80%</td>
+                            <td>0.954</td>
+                        </tr>
+                        <tr style="background:var(--cyan-900)">
+                            <td><b>⭐ ResNet50 (Fine-Tuned Champion)</b></td>
+                            <td>~24.1M</td>
+                            <td><b>96.19%</b></td>
+                            <td><b>96.18%</b></td>
+                            <td><b>0.44%</b></td>
+                            <td><b>0.998</b></td>
+                        </tr>
+                        <tr>
+                            <td><b>EfficientNetB0 (Fine-Tuned)</b></td>
+                            <td>~4.3M</td>
+                            <td>91.75%</td>
+                            <td>91.50%</td>
+                            <td>1.85%</td>
+                            <td>0.976</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="card-title">
+                    <span>Confusion Matrix (Champion ResNet50 on 7,200 Scans)</span>
+                </div>
+                <table class="triage-table">
+                    <thead>
+                        <tr>
+                            <th>Pathology Ground Truth</th>
+                            <th>Pred Glioma</th>
+                            <th>Pred Meningioma</th>
+                            <th>Pred Pituitary</th>
+                            <th>Pred Healthy Control</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><b>Actual Glioma (1,800)</b></td><td><b>1,745</b></td><td>25</td><td>22</td><td>8 (FN)</td></tr>
+                        <tr><td><b>Actual Meningioma (1,800)</b></td><td>29</td><td><b>1,606</b></td><td>158</td><td>7 (FN)</td></tr>
+                        <tr><td><b>Actual Pituitary (1,800)</b></td><td>1</td><td>4</td><td><b>1,786</b></td><td>9 (FN)</td></tr>
+                        <tr><td><b>Actual No Tumor (1,800)</b></td><td>7</td><td>1</td><td>3</td><td><b>1,789 (TN)</b></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <!-- TAB 4: Model Card & Safety Scope -->
+        <main id="tab-modelcard" class="tab-pane" style="display:none;">
+            <div class="card">
+                <div class="card-title">
+                    <span>🛡️ Clinical Model Card & Regulatory Safety Disclaimers</span>
+                </div>
+                <div style="font-size:0.88rem; color:var(--text-secondary); line-height:1.6;">
+                    <p><b>1. Operational Scope & Safety Intent</b><br>
+                    Designed as an algorithmic explainability and deep learning benchmarking platform. Strictly prohibited for automated standalone diagnostic triage without certified radiologist review.</p>
+                    <br>
+                    <p><b>2. Clinical False Negative Prioritization</b><br>
+                    In clinical neuro-oncology, a False Negative (predicting no tumor when pathology exists) is penalized via inverse-frequency class weighting to minimize missed diagnoses.</p>
+                    <br>
+                    <p><b>3. Bayesian Uncertainty Safety Thresholds</b><br>
+                    Selective Monte Carlo Dropout ($N=20$) is restricted to the dense head to preserve batch normalization statistics. Predictions triggering $H \ge 0.50$ or $\sigma_{\max} \ge 0.35$ automatically escalate to <code>HIGH_RISK_RADIOLOGIST_REVIEW</code>.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- In-Browser PDF Modal Viewer -->
+    <div class="modal" id="pdf-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 Official Clinical Diagnostic Report (PDF)</h3>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" id="download-pdf-btn" style="padding:6px 14px; font-size:0.8rem;">📥 Download PDF</button>
+                    <button class="btn-secondary" onclick="closeModal()" style="padding:6px 14px; font-size:0.8rem;">✖ Close</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <iframe id="pdf-frame"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

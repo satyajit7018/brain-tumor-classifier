@@ -135,10 +135,24 @@ def make_gradcam_heatmap(img_array: np.ndarray, model: tf.keras.Model, last_conv
 
 
 
-def overlay_heatmap(original_img: np.ndarray, heatmap: np.ndarray, alpha: float = 0.4) -> np.ndarray:
+COLORMAP_DICT = {
+    "jet": cv2.COLORMAP_JET,
+    "inferno": cv2.COLORMAP_INFERNO,
+    "viridis": cv2.COLORMAP_VIRIDIS,
+    "turbo": cv2.COLORMAP_TURBO,
+}
+
+
+def overlay_heatmap(
+    original_img: np.ndarray,
+    heatmap: np.ndarray,
+    alpha: float = 0.4,
+    colormap: str = "jet",
+) -> np.ndarray:
+    cmap_code = COLORMAP_DICT.get(colormap.lower(), cv2.COLORMAP_JET)
     heatmap_resized = cv2.resize(heatmap, (original_img.shape[1], original_img.shape[0]))
     heatmap_uint8 = np.uint8(255 * heatmap_resized)
-    heatmap_color = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
+    heatmap_color = cv2.applyColorMap(heatmap_uint8, cmap_code)
 
     if np.issubdtype(original_img.dtype, np.floating):
         original_uint8 = np.uint8(np.clip(original_img * 255.0, 0, 255))
@@ -147,5 +161,6 @@ def overlay_heatmap(original_img: np.ndarray, heatmap: np.ndarray, alpha: float 
 
     overlaid = cv2.addWeighted(original_uint8, 1 - alpha, heatmap_color, alpha, 0)
     return overlaid
+
 
 
