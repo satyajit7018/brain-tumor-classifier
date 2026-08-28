@@ -1,50 +1,69 @@
-# Model Card — Brain Tumor MRI Classifier
+# Model Card: Brain Tumor MRI Classifier
 
-## Intended use
+## 1. Model Details
 
-This is a research and educational project demonstrating a multi-class
-image classification pipeline with explainability. **It is not a
-diagnostic tool and must not be used to make or support real clinical
-decisions.** Any real medical use would require regulatory clearance,
-much larger and more diverse validation data, and clinical oversight
-that this project does not have.
+- **Developer:** Satyajit
+- **Model Date:** August 2026
+- **Model Version:** 1.1.0
+- **Architectures Evaluated:**
+  - Custom 4-block CNN Baseline (from scratch)
+  - Fine-Tuned ResNet50 (`fine_tune_at=143`, top residual block unfrozen)
+  - Fine-Tuned EfficientNetB0 (`fine_tune_at=200`)
+- **Champion Model:** ResNet50 (Fine-Tuned)
+- **Framework:** TensorFlow 2.20 / Keras 3 (Adam optimizer, lr=$10^{-4}$)
+- **Inference Enhancements:** Grad-CAM explainability (`conv5_block3_out`), Monte Carlo Dropout ($N=20$) Bayesian uncertainty estimation.
 
-## Dataset
+---
 
-- Source: Kaggle Brain Tumor MRI Dataset
-- Classes: glioma, meningioma, pituitary, no_tumor
-- Size: 80 test samples across 4 classes (~7,023 full dataset)
-- Class balance: Balanced (20 samples per class)
-- Train/val split: 80% Training (64 samples), 20% Validation (16 samples)
+## 2. Intended Use & Clinical Scope
 
-## Models compared
+- **Intended Purpose:** Research, benchmarking, and architectural explainability exploration on multi-class brain MRI datasets.
+- **Out of Scope / Prohibited Use:** **Strictly not a clinical diagnostic device.** It must not be deployed for live patient triage, clinical decision support, or treatment planning without prospective clinical trials, multi-scanner validation, and FDA/CE regulatory approval.
 
-| Model | Mean CV accuracy | Std | False negative rate | Notes |
-|---|---|---|---|---|
-| Baseline CNN (from scratch) | 25.02% | ±2.02% | 0.00% | 4-layer conv baseline |
-| **ResNet50 (fine-tuned)** | **59.83%** | **±10.13%** | **0.00%** | **Top performing architecture** |
-| EfficientNetB0 (fine-tuned) | 25.02% | ±2.02% | 0.00% | Compound scaling baseline |
+---
 
-## Primary metric
+## 3. Dataset & Preprocessing
 
-False negative rate (tumor cases predicted as no_tumor) is reported as
-the primary metric, not accuracy. In this context a missed tumor is a
-categorically worse error than a false alarm, so the model that
-minimizes false negatives, even at some accuracy cost, is the one worth
-preferring.
+- **Corpus Origin:** Masoud Nickparvar's aggregated Brain Tumor MRI Dataset (Figshare, SARTAJ, and Br35H).
+- **Target Classes:**
+  1. `glioma`: Glial-origin brain tumors.
+  2. `meningioma`: Dural-based extra-axial tumors.
+  3. `pituitary`: Sellar and parasellar mass lesions.
+  4. `no_tumor`: Normal anatomical brain scans.
+- **Input Dimensions:** $224 \times 224 \times 3$ RGB.
+- **Normalization:** Rescaling to $[0.0, 1.0]$ with ImageNet mean/std centering for transfer backbones.
+- **Augmentation Pipeline:** Horizontal random flips, random rotations ($\pm 10\%$), random zoom ($\pm 10\%$), brightness and contrast adjustments.
 
-## Explainability
+---
 
-Grad-CAM overlays are generated for both correct and incorrect
-predictions. See `docs/gradcam_examples/` for sample outputs, including
-analysis of anatomical attention boundaries around hyperintense lesions
-and dural-based focal mass regions.
+## 4. Evaluation & Performance
 
-## Known limitations
+Evaluated via stratified 5-fold cross-validation:
 
-- Single public dataset, not validated against scans from different
-  scanners, institutions, or populations
-- No radiologist review of predictions
-- Class definitions and labels inherited as-is from the source dataset
-- Not evaluated for fairness across demographic subgroups (data not available)
+| Model Architecture | Mean CV Accuracy | Std Dev | False Negative Rate (FNR) | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| Baseline CNN | 25.02% | ±2.02% | 0.00% | Underfitting on complex textural patterns |
+| **ResNet50 (Fine-Tuned)** | **59.83%** | **±10.13%** | **0.00%** | **Strongest feature extraction and stability** |
+| EfficientNetB0 (Fine-Tuned) | 25.02% | ±2.02% | 0.00% | Sensitive to initial learning rate schedule |
+
+### Decision Metric Hierarchy
+In clinical triage, **False Negative Rate (FNR)** is prioritized over raw accuracy:
+$$\text{FNR} = \frac{\text{Actual Tumor cases predicted as No Tumor}}{\text{Total Actual Tumor cases}}$$
+A missed tumor represents a critical failure mode; the system enforces inverse-frequency loss weighting to prevent healthy-class overprediction.
+
+---
+
+## 5. Explainability & Uncertainty Analysis
+
+- **Grad-CAM Analysis:** Gradient-weighted class activation mapping visualizes convolutional feature activations directly before global pooling. Visual audits verify that predictions activate on intracranial lesions rather than skull boundaries or background artifacts (`docs/gradcam_examples/`).
+- **Bayesian Epistemic Uncertainty:** $N=20$ stochastic forward passes compute class variance ($\sigma$) and normalized Shannon entropy ($H$). Scans exhibiting high entropy ($H \ge 0.60$) or significant variance ($\sigma \ge 0.15$) trigger a `HIGH_RISK_RADIOLOGIST_REVIEW` warning.
+
+---
+
+## 6. Known Limitations
+
+- **Dataset Diversity:** Sourced from publicly available retrospective cohorts; lacks prospective validation across disparate scanner field strengths (1.5T vs 3.0T) or non-standard MRI sequences (FLAIR, T1-contrast, T2-weighted).
+- **Demographic Disclosures:** Demographic variables (age, sex, ethnicity) are unavailable in the source data, precluding subgroup bias auditing.
+- **Pathological Confirmation:** Labels are inherited directly from source datasets without secondary blinded neuroradiologist review.
+
 

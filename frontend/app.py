@@ -6,45 +6,44 @@ import streamlit as st
 
 st.set_page_config(
     page_title="Brain Tumor MRI Classifier",
-    page_icon="🧠",
     layout="wide",
 )
 
-# Custom CSS for clinical styling
+# Clinical styling
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
         font-weight: 700;
-        color: #1E293B;
-        margin-bottom: 0.2rem;
+        color: #0F172A;
+        margin-bottom: 0.1rem;
     }
     .sub-header {
-        color: #64748B;
-        font-size: 1.05rem;
-        margin-bottom: 1.5rem;
+        color: #475569;
+        font-size: 0.95rem;
+        margin-bottom: 1.2rem;
     }
     .disclaimer-box {
         background-color: #FEF3C7;
-        border-left: 5px solid #F59E0B;
-        padding: 12px 16px;
+        border-left: 4px solid #D97706;
+        padding: 10px 14px;
         border-radius: 4px;
-        color: #92400E;
-        font-size: 0.9rem;
-        margin-bottom: 1.5rem;
+        color: #78350F;
+        font-size: 0.85rem;
+        margin-bottom: 1.2rem;
     }
     .metric-card {
         background: #F8FAFC;
         border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 16px;
+        border-radius: 6px;
+        padding: 12px;
         text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # Sidebar configuration
-st.sidebar.title("⚙️ System Configuration")
+st.sidebar.title("System Configuration")
 api_url = st.sidebar.text_input("FastAPI Endpoint URL", value=os.getenv("API_URL", "http://localhost:8000"))
 
 # Check API health
@@ -53,40 +52,40 @@ try:
     if health_resp.status_code == 200:
         health_data = health_resp.json()
         if health_data.get("model_loaded"):
-            st.sidebar.success("● API Online & Model Loaded")
+            st.sidebar.success("Endpoint Online — Model Loaded")
         else:
-            st.sidebar.warning("▲ API Online (Model Weights Pending)")
+            st.sidebar.warning("Endpoint Online — Model Weights Pending")
     else:
-        st.sidebar.error("✖ API Error")
+        st.sidebar.error("Endpoint Error")
 except Exception:
-    st.sidebar.error("✖ API Offline (Check localhost:8000)")
+    st.sidebar.error("Endpoint Offline (localhost:8000)")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
-### 📋 Classes
-- **Glioma** (Tumor)
-- **Meningioma** (Tumor)
-- **Pituitary** (Tumor)
-- **No Tumor** (Healthy)
+**Target Classes**
+- Glioma
+- Meningioma
+- Pituitary
+- No Tumor (Control)
 
-### 🔬 Primary Metric
-Prioritizes **False Negative Rate (FNR)** to minimize missed tumor cases over raw accuracy.
+**Evaluation Protocol**
+Stratified 5-fold cross-validation with inverse frequency loss weighting and Monte Carlo Dropout uncertainty estimation.
 """)
 
 # Main UI Header
-st.markdown('<div class="main-header">🧠 Brain Tumor MRI Classifier & Explainability</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Multi-class transfer learning evaluation with automated Grad-CAM visual attention mapping.</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">Brain Tumor MRI Classification & Explainability Console</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Multi-class transfer learning evaluation with Grad-CAM feature mapping and Bayesian uncertainty estimation.</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="disclaimer-box">
-    <strong>⚠️ Medical & Research Disclaimer:</strong> This system is a research and educational prototype. It is NOT a clinical diagnostic device and must not be used for medical decisions or patient diagnosis.
+    <strong>Notice:</strong> This software is a research prototype and is not approved as a medical diagnostic device. Scans must be reviewed by certified clinical personnel.
 </div>
 """, unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader(
-    "Upload a Brain MRI Scan (JPG, PNG, JPEG)",
+    "Upload Brain MRI Scan (JPG, PNG, JPEG)",
     type=["jpg", "jpeg", "png"],
-    help="Upload an axial/sagittal/coronal T1/T2 weighted brain MRI scan.",
+    help="Upload an axial, coronal, or sagittal T1/T2 weighted brain MRI slice.",
 )
 
 if uploaded_file is not None:
@@ -94,10 +93,10 @@ if uploaded_file is not None:
     with col_input:
         st.info(f"Loaded: `{uploaded_file.name}` ({uploaded_file.size / 1024:.1f} KB)")
     with col_action:
-        classify_btn = st.button("🚀 Analyze Scan", use_container_width=True, type="primary")
+        classify_btn = st.button("Run Inference", use_container_width=True, type="primary")
 
     if classify_btn:
-        with st.spinner("Running inference and generating Grad-CAM explainability overlay..."):
+        with st.spinner("Executing inference and generating Grad-CAM overlay..."):
             try:
                 files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
                 resp = requests.post(f"{api_url}/predict", files=files, timeout=10)
@@ -110,7 +109,7 @@ if uploaded_file is not None:
                     overlay_b64 = data["gradcam_overlay"]
 
                     st.markdown("---")
-                    st.subheader("📊 Diagnostic Summary & Bayesian Uncertainty")
+                    st.subheader("Diagnostic Classification & Uncertainty")
 
                     m1, m2, m3, m4 = st.columns(4)
                     with m1:
@@ -119,7 +118,7 @@ if uploaded_file is not None:
                         st.metric("Mean Confidence", f"{confidence:.1%}")
                     with m3:
                         uncertainty_val = data.get("epistemic_uncertainty", 0.0)
-                        st.metric("Epistemic Uncertainty", f"±{uncertainty_val:.3f}")
+                        st.metric("Epistemic Std (±)", f"{uncertainty_val:.3f}")
                     with m4:
                         entropy_val = data.get("predictive_entropy", 0.0)
                         st.metric("Entropy Index", f"{entropy_val:.2f} / 1.0")
@@ -128,24 +127,24 @@ if uploaded_file is not None:
                     clinical_status = data.get("clinical_status", "LOW_RISK_CONFIDENT")
                     status_desc = data.get("status_description", "")
                     if "HIGH" in clinical_status:
-                        st.error(f"🚨 **Clinical Alert: {clinical_status}**\n\n{status_desc}")
+                        st.error(f"**Clinical Alert: {clinical_status}**\n\n{status_desc}")
                     elif "MODERATE" in clinical_status:
-                        st.warning(f"⚠️ **Clinical Notice: {clinical_status}**\n\n{status_desc}")
+                        st.warning(f"**Clinical Notice: {clinical_status}**\n\n{status_desc}")
                     else:
-                        st.success(f"✅ **Clinical Status: {clinical_status}**\n\n{status_desc}")
+                        st.success(f"**Clinical Status: {clinical_status}**\n\n{status_desc}")
 
                     st.markdown("---")
-                    st.subheader("🔍 Visual Explainability (Grad-CAM)")
+                    st.subheader("Explainability (Grad-CAM Attention Mapping)")
                     img_col1, img_col2 = st.columns(2)
 
                     with img_col1:
                         st.image(uploaded_file, caption="Original MRI Scan", use_container_width=True)
                     with img_col2:
                         overlay_bytes = base64.b64decode(overlay_b64)
-                        st.image(overlay_bytes, caption="Grad-CAM Attention Heatmap (Where the model focused)", use_container_width=True)
+                        st.image(overlay_bytes, caption="Grad-CAM Convolutional Heatmap", use_container_width=True)
 
                     st.markdown("---")
-                    st.subheader("📈 Class Probability & Variance Distribution")
+                    st.subheader("Multi-Class Probability & Variance Distribution")
                     std_probs = data.get("std_probabilities", {})
                     df_probs = pd.DataFrame([
                         {
@@ -160,23 +159,23 @@ if uploaded_file is not None:
 
                     # Automated Clinical PDF Report Generation
                     st.markdown("---")
-                    st.subheader("📄 Export Clinical Diagnostic Summary")
-                    with st.spinner("Generating official medical PDF summary..."):
+                    st.subheader("Export Case Report")
+                    with st.spinner("Compiling PDF summary..."):
                         report_resp = requests.post(f"{api_url}/report", files=files, timeout=15)
                         if report_resp.status_code == 200:
                             st.download_button(
-                                label="📥 Download Official Clinical Report (PDF)",
+                                label="Download Clinical Diagnostic Report (PDF)",
                                 data=report_resp.content,
-                                file_name=f"brain_mri_report_{uploaded_file.name}.pdf",
+                                file_name=f"case_report_{uploaded_file.name}.pdf",
                                 mime="application/pdf",
                                 use_container_width=True,
                                 type="primary",
                             )
                         else:
-                            st.warning("Could not generate PDF report automatically.")
+                            st.warning("PDF report generation failed.")
 
                 elif resp.status_code == 503:
-                    st.warning("⚠️ Model weights are not loaded on the backend. Please train the model (`python scripts/train_final.py`) first.")
+                    st.warning("Model weights are not initialized. Please train the model (`python scripts/train_final.py`) first.")
                 else:
                     st.error(f"API Error ({resp.status_code}): {resp.text}")
 
@@ -184,5 +183,6 @@ if uploaded_file is not None:
                 st.error(f"Could not connect to API at `{api_url}`. Ensure FastAPI server is running (`uvicorn src.api.main:app`).")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+
 
 
