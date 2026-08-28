@@ -6,6 +6,7 @@ evidence on its own.
 import json
 
 import numpy as np
+import tensorflow as tf
 from sklearn.model_selection import StratifiedKFold
 
 from src.models.baseline_cnn import build_baseline_cnn
