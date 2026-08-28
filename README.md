@@ -2,15 +2,15 @@
 
 Multi-class brain MRI classification system comparing a custom CNN baseline against fine-tuned transfer learning models (ResNet50, EfficientNetB0) across four classes: glioma, meningioma, pituitary, and normal brain scans.
 
-Rather than reporting a single accuracy metric from an arbitrary train/test split, this repository uses stratified 5-fold cross-validation, evaluates model explainability via Grad-CAM, estimates prediction confidence using Monte Carlo Dropout, and prioritizes the False Negative Rate (FNR) to reflect clinical triage priorities.
+The project follows a two-stage workflow: k-fold cross-validation (`scripts/train_all.py`) to compare architectures under controlled conditions, then full training with early stopping and learning rate scheduling (`scripts/train_final.py`) to produce the deployed champion model. Evaluation goes beyond accuracy — the system prioritizes False Negative Rate (missed tumors), provides Grad-CAM visual explainability, and estimates prediction confidence via Monte Carlo Dropout.
 
 **Disclaimer:** Research and educational code only. Not approved for diagnostic or clinical use. See `docs/MODEL_CARD.md`.
 
 ---
 
-## Benchmark & Evaluation Results
+## Champion Model Evaluation
 
-Evaluated across all 7,200 clinical MRI scans (1,800 images per class):
+The champion ResNet50 was trained on the full 7,200-scan dataset with `ModelCheckpoint`, `EarlyStopping`, and `ReduceLROnPlateau`, then evaluated on all 7,200 scans (1,800 per class):
 
 | Model Architecture | Test Accuracy | Macro F1-Score | False Negative Rate (FNR) | Mean ROC-AUC |
 | :--- | :--- | :--- | :--- | :--- |
@@ -56,14 +56,14 @@ Actual No Tumor             7                  1                     3          
 ├── src/
 │   ├── data/            # Ingestion, augmentation, and array loaders
 │   ├── models/          # Baseline CNN, ResNet50, and EfficientNetB0 definitions
-│   ├── train/           # K-fold cross-validation engine
+│   ├── train/           # K-fold cross-validation and training utilities
 │   ├── eval/            # Metrics, Grad-CAM resolver, MC Dropout, and PDF generator
 │   └── api/             # FastAPI service (/health, /predict, /report)
 ├── scripts/
 │   ├── download_dataset.py     # Kaggle API and archive extractor
 │   ├── generate_sample_data.py # Synthetic MRI generator for local testing
-│   ├── train_all.py            # 5-fold cross-validation benchmarking runner
-│   ├── train_final.py          # Production checkpoint trainer
+│   ├── train_all.py            # K-fold architecture comparison runner
+│   ├── train_final.py          # Champion model trainer (early stopping + LR scheduling)
 │   └── evaluate_final.py       # Full evaluation suite and heatmap generator
 ├── frontend/
 │   └── app.py                  # Streamlit diagnostic interface
@@ -97,10 +97,11 @@ For quick local testing without the full dataset, generate synthetic scans:
 python scripts/generate_sample_data.py --samples-per-class 20
 ```
 
-### 3. Run Cross-Validation Benchmark
+### 3. Run Architecture Comparison (Optional)
 
+Compare all three architectures via k-fold cross-validation. This is useful for architecture selection but is not how the champion model's headline metrics were produced:
 ```bash
-python scripts/train_all.py --k-folds 5 --epochs 15
+python scripts/train_all.py --k-folds 3 --epochs 5
 ```
 
 ### 4. Train Champion Model

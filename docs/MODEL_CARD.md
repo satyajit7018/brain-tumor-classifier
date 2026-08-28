@@ -38,7 +38,7 @@
 
 ## 4. Evaluation & Performance
 
-Evaluated across 7,200 clinical MRI scans:
+The champion ResNet50 was trained on the full 7,200-scan dataset with `ModelCheckpoint`, `EarlyStopping`, and `ReduceLROnPlateau`, then evaluated on all scans:
 
 | Model Architecture | Accuracy | Macro F1-Score | False Negative Rate (FNR) | Mean ROC-AUC |
 | :--- | :--- | :--- | :--- | :--- |
