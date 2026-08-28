@@ -101,7 +101,7 @@ python scripts/generate_sample_data.py --samples-per-class 20
 
 Compare all three architectures via k-fold cross-validation. This is useful for architecture selection but is not how the champion model's headline metrics were produced:
 ```bash
-python scripts/train_all.py --k-folds 3 --epochs 5
+python scripts/train_all.py --k-folds 3 --epochs 3
 ```
 
 ### 4. Train Champion Model
