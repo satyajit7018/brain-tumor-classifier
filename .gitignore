@@ -11,3 +11,5 @@ data/splits/*
 *.keras
 saved_models/
 .DS_Store
+docs/*Resume*.pdf
+*.pdf
