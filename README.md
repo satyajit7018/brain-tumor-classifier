@@ -8,9 +8,9 @@ Rather than reporting a single accuracy metric from an arbitrary train/test spli
 
 ---
 
-## Benchmark Results
+## Benchmark & Evaluation Results
 
-Evaluated across 7,200 clinical MRI scans (1,800 per class):
+Evaluated across all 7,200 clinical MRI scans (1,800 images per class):
 
 | Model Architecture | Test Accuracy | Macro F1-Score | False Negative Rate (FNR) | Mean ROC-AUC |
 | :--- | :--- | :--- | :--- | :--- |
@@ -18,14 +18,25 @@ Evaluated across 7,200 clinical MRI scans (1,800 per class):
 | **ResNet50 (Fine-Tuned Champion)** | **96.19%** | **96.18%** | **0.44%** | **0.998** |
 | EfficientNetB0 (Fine-Tuned) | 91.75% | 91.50% | 1.85% | 0.976 |
 
-### Per-Class Performance (Champion ResNet50)
-- **Glioma**: 97.4% F1-Score | 97.9% Precision | 96.9% Recall (ROC-AUC: 0.9987)
-- **Meningioma**: 93.5% F1-Score | 98.2% Precision | 89.2% Recall (ROC-AUC: 0.9955)
-- **Pituitary**: 94.8% F1-Score | 90.7% Precision | 99.2% Recall (ROC-AUC: 0.9992)
-- **No Tumor (Healthy Control)**: 99.0% F1-Score | 98.7% Precision | 99.4% Recall (ROC-AUC: 0.9999)
-- **Primary Clinical Metric (False Negative Rate)**: **0.44%** (99.56% sensitivity on tumor identification)
+### Confusion Matrix (Champion ResNet50 on 7,200 Scans)
 
-*Detailed metrics and fold logs are stored in `docs/eval_results.json`.*
+```text
+                  Predicted Glioma   Predicted Meningioma   Predicted Pituitary   Predicted No Tumor
+Actual Glioma           1,745                 25                    22                    8 (FN)
+Actual Meningioma          29              1,606                   158                    7 (FN)
+Actual Pituitary            1                  4                 1,786                    9 (FN)
+Actual No Tumor             7                  1                     3                1,789 (TN)
+```
+
+### Detailed Per-Class Classification Report
+- **Glioma**: 97.92% Precision | 96.94% Recall | 97.43% F1-Score (ROC-AUC: 0.9987)
+- **Meningioma**: 98.17% Precision | 89.22% Recall | 93.48% F1-Score (ROC-AUC: 0.9955)
+- **Pituitary**: 90.71% Precision | 99.22% Recall | 94.77% F1-Score (ROC-AUC: 0.9992)
+- **No Tumor (Healthy Control)**: 98.68% Precision | 99.39% Recall | 99.03% F1-Score (ROC-AUC: 0.9999)
+- **Primary Clinical Metric (False Negative Rate)**: **0.44%** (Total 24 missed tumor cases out of 5,400 pathological scans = 99.56% sensitivity).
+
+*Exact evaluation metrics are stored in `docs/eval_results.json`.*
+
 
 
 ---
