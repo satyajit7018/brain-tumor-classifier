@@ -110,17 +110,29 @@ if uploaded_file is not None:
                     overlay_b64 = data["gradcam_overlay"]
 
                     st.markdown("---")
-                    st.subheader("📊 Diagnostic Summary")
+                    st.subheader("📊 Diagnostic Summary & Bayesian Uncertainty")
 
-                    m1, m2, m3 = st.columns(3)
+                    m1, m2, m3, m4 = st.columns(4)
                     with m1:
-                        st.metric("Predicted Classification", predicted_class.upper())
+                        st.metric("Predicted Class", predicted_class.upper())
                     with m2:
-                        st.metric("Model Confidence", f"{confidence:.1%}")
+                        st.metric("Mean Confidence", f"{confidence:.1%}")
                     with m3:
-                        is_tumor = predicted_class != "no_tumor"
-                        status_label = "TUMOR DETECTED" if is_tumor else "NO TUMOR DETECTED"
-                        st.metric("Clinical Category", status_label)
+                        uncertainty_val = data.get("epistemic_uncertainty", 0.0)
+                        st.metric("Epistemic Uncertainty", f"±{uncertainty_val:.3f}")
+                    with m4:
+                        entropy_val = data.get("predictive_entropy", 0.0)
+                        st.metric("Entropy Index", f"{entropy_val:.2f} / 1.0")
+
+                    # Clinical Safety Alert Badge
+                    clinical_status = data.get("clinical_status", "LOW_RISK_CONFIDENT")
+                    status_desc = data.get("status_description", "")
+                    if "HIGH" in clinical_status:
+                        st.error(f"🚨 **Clinical Alert: {clinical_status}**\n\n{status_desc}")
+                    elif "MODERATE" in clinical_status:
+                        st.warning(f"⚠️ **Clinical Notice: {clinical_status}**\n\n{status_desc}")
+                    else:
+                        st.success(f"✅ **Clinical Status: {clinical_status}**\n\n{status_desc}")
 
                     st.markdown("---")
                     st.subheader("🔍 Visual Explainability (Grad-CAM)")
@@ -133,13 +145,35 @@ if uploaded_file is not None:
                         st.image(overlay_bytes, caption="Grad-CAM Attention Heatmap (Where the model focused)", use_container_width=True)
 
                     st.markdown("---")
-                    st.subheader("📈 Class Probability Distribution")
-                    df_probs = pd.DataFrame(
-                        list(probabilities.items()),
-                        columns=["Class", "Probability"]
-                    )
-                    df_probs["Probability (%)"] = df_probs["Probability"] * 100
+                    st.subheader("📈 Class Probability & Variance Distribution")
+                    std_probs = data.get("std_probabilities", {})
+                    df_probs = pd.DataFrame([
+                        {
+                            "Class": cls_name.replace("_", " ").title(),
+                            "Probability (%)": prob * 100,
+                            "Epistemic Std (±%)": std_probs.get(cls_name, 0.0) * 100,
+                        }
+                        for cls_name, prob in probabilities.items()
+                    ])
                     st.bar_chart(df_probs.set_index("Class")["Probability (%)"])
+                    st.dataframe(df_probs, use_container_width=True)
+
+                    # Automated Clinical PDF Report Generation
+                    st.markdown("---")
+                    st.subheader("📄 Export Clinical Diagnostic Summary")
+                    with st.spinner("Generating official medical PDF summary..."):
+                        report_resp = requests.post(f"{api_url}/report", files=files, timeout=15)
+                        if report_resp.status_code == 200:
+                            st.download_button(
+                                label="📥 Download Official Clinical Report (PDF)",
+                                data=report_resp.content,
+                                file_name=f"brain_mri_report_{uploaded_file.name}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                type="primary",
+                            )
+                        else:
+                            st.warning("Could not generate PDF report automatically.")
 
                 elif resp.status_code == 503:
                     st.warning("⚠️ Model weights are not loaded on the backend. Please train the model (`python scripts/train_final.py`) first.")
@@ -150,4 +184,5 @@ if uploaded_file is not None:
                 st.error(f"Could not connect to API at `{api_url}`. Ensure FastAPI server is running (`uvicorn src.api.main:app`).")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+
 
