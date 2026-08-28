@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -32,30 +33,3 @@ jobs:
       - name: Verify Docker Container Build
         run: |
           docker build -t brain-tumor-classifier:ci-test .
-
-  deploy:
-    name: Deploy to Cloud (EC2 / Staging)
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Remote Server
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-        run: |
-          if [ -n "$EC2_HOST" ] && [ -n "$EC2_SSH_KEY" ]; then
-            mkdir -p ~/.ssh
-            echo "$EC2_SSH_KEY" > ~/.ssh/id_rsa
-            chmod 600 ~/.ssh/id_rsa
-            ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-            ssh -o StrictHostKeyChecking=no "${EC2_USER:-ubuntu}@$EC2_HOST" "cd brain-tumor-classifier && git pull && docker compose up -d --build"
-          else
-            echo "EC2 secrets not configured in repository. Skipping remote deploy step."
-          fi
-
-
-
