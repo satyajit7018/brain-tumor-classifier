@@ -1,0 +1,38 @@
+{
+  "benchmark_date": "2026-08-28T10:28:59",
+  "k_folds": 3,
+  "epochs_per_fold": 2,
+  "total_samples": 80,
+  "models": {
+    "baseline_cnn": {
+      "model": "baseline_cnn",
+      "fold_accuracies": [
+        0.25925925374031067,
+        0.2222222238779068,
+        0.26923078298568726
+      ],
+      "mean_accuracy": 0.2502374202013016,
+      "std_accuracy": 0.020223686898479785
+    },
+    "resnet50": {
+      "model": "resnet50",
+      "fold_accuracies": [
+        0.6296296119689941,
+        0.7037037014961243,
+        0.4615384638309479
+      ],
+      "mean_accuracy": 0.5982905924320221,
+      "std_accuracy": 0.10131666921920886
+    },
+    "efficientnet_b0": {
+      "model": "efficientnet_b0",
+      "fold_accuracies": [
+        0.25925925374031067,
+        0.2222222238779068,
+        0.26923078298568726
+      ],
+      "mean_accuracy": 0.2502374202013016,
+      "std_accuracy": 0.020223686898479785
+    }
+  }
+}
