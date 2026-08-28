@@ -45,7 +45,7 @@ Actual No Tumor             7                  1                     3          
 
 1. **False Negative Rate as Primary Metric**: In clinical imaging, failing to identify an existing tumor (predicting `no_tumor` when pathology exists) is significantly more detrimental than a false positive. Training handles class imbalance via inverse frequency weighting.
 2. **Explainability via Grad-CAM**: Model decisions are inspected using Grad-CAM attention heatmaps extracted from the final convolutional stage (`conv5_block3_out` for ResNet50). Generated visual examples are saved in `docs/gradcam_examples/`.
-3. **Bayesian Uncertainty (Monte Carlo Dropout)**: During inference, $N=20$ stochastic forward passes with dropout active calculate epistemic standard deviation ($\sigma$) and normalized Shannon entropy ($H$) to identify low-confidence scans for human review.
+3. **Bayesian Uncertainty (Monte Carlo Dropout)**: During inference, $N=20$ stochastic forward passes calculate epistemic standard deviation ($\sigma$) and normalized Shannon entropy ($H$) to identify low-confidence scans for human review. Dropout sampling is restricted to the classification head; the convolutional feature extractor and BatchNorm layers remain in deterministic inference mode to avoid single-sample batch normalization instability.
 4. **Clinical PDF Reporting**: An integrated ReportLab engine generates structured case summaries with embedded heatmaps and probability distributions (`docs/reports/sample_clinical_report.pdf`).
 
 ---
