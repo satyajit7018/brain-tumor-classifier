@@ -64,7 +64,7 @@ A missed tumor represents a critical failure mode; the system enforces inverse-f
 ## 5. Explainability & Uncertainty Analysis
 
 - **Grad-CAM Analysis:** Gradient-weighted class activation mapping visualizes convolutional feature activations directly before global pooling. Visual audits verify that predictions activate on intracranial lesions rather than skull boundaries or background artifacts (`docs/gradcam_examples/`).
-- **Bayesian Epistemic Uncertainty:** $N=20$ stochastic forward passes compute class variance ($\sigma$) and normalized Shannon entropy ($H$). Dropout sampling is restricted to the classification head; the convolutional feature extractor and BatchNorm layers remain in deterministic inference mode to avoid single-sample batch normalization instability. Scans exhibiting high entropy ($H \ge 0.60$) or significant variance ($\sigma \ge 0.25$) trigger a `HIGH_RISK_RADIOLOGIST_REVIEW` warning.
+- **Bayesian Epistemic Uncertainty:** $N=20$ stochastic forward passes compute class variance ($\sigma$) and normalized Shannon entropy ($H$). Dropout sampling is restricted to the classification head; the convolutional feature extractor and BatchNorm layers remain in deterministic inference mode to avoid single-sample batch normalization instability. Scans exhibiting high entropy ($H \ge 0.50$), low confidence ($< 65\%$), or significant variance ($\sigma_{\max} \ge 0.35$) trigger a `HIGH_RISK_RADIOLOGIST_REVIEW` warning.
 
 ---
 

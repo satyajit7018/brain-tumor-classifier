@@ -66,8 +66,9 @@ Actual No Tumor             7                  1                     3          
 │   ├── train_final.py          # Champion model trainer (early stopping + LR scheduling)
 │   └── evaluate_final.py       # Full evaluation suite and heatmap generator
 ├── frontend/
-│   └── app.py                  # Streamlit diagnostic interface
-├── tests/                      # Unit test suite (12 tests)
+│   ├── app.py                  # Streamlit diagnostic interface
+│   └── web/                    # Standalone PACS Single-Page Web Application
+├── tests/                      # Unit & integration test suite (14 tests)
 ├── docs/                       # Model cards, build plan, and evaluation artifacts
 └── Dockerfile                  # Container definition
 ```
@@ -126,23 +127,30 @@ python -m unittest discover tests
 
 ---
 
-## Local Serving
+## Local Serving & Web Applications
 
-Start the FastAPI inference backend:
+### 🌐 Option A: Standalone PACS Web Console (FastAPI)
+Start the FastAPI backend with the embedded PACS single-page application:
 ```bash
 uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+Open **`http://localhost:8000`** for the full interactive PACS viewport with split-screen wipe slider, window/level calibration, emergency cohort triage queue, and in-browser PDF report preview.
 
-In a separate terminal, launch the Streamlit frontend:
+### 📊 Option B: Streamlit Diagnostic Console
+In a separate terminal, launch the Streamlit interface:
 ```bash
 streamlit run frontend/app.py
 ```
+Open **`http://localhost:8501`** for the tri-view Grad-CAM analysis and multi-model benchmark explorer.
 
-### Endpoints
-- `GET /health`: Service health, model status, and enabled features.
-- `GET /classes`: Target class mapping.
-- `POST /predict`: Upload scan image; returns classification, probability breakdown, epistemic uncertainty, and base64 Grad-CAM overlay.
-- `POST /report`: Upload scan image; returns binary downloadable clinical PDF summary.
+### API Endpoints
+- `GET /`: Serves the interactive standalone PACS web application.
+- `GET /health`: Service health status, active weights, and enabled capabilities.
+- `GET /classes`: Target class mapping dictionary.
+- `GET /samples`: Preloaded authentic MRI scans for 1-click zero-friction testing.
+- `POST /predict`: Multi-class classification with colormap selection (`jet`, `inferno`, `viridis`, `turbo`), predictive entropy, epistemic uncertainty, and base64 Grad-CAM overlay.
+- `POST /report`: Compiles and streams a downloadable clinical PDF diagnostic report.
+- `POST /triage`: Simulates emergency department multi-patient cohort prioritization.
 
 ---
 
@@ -152,6 +160,7 @@ Build and start the containerized service:
 ```bash
 docker compose up -d --build
 ```
-The API is available at `http://localhost:8000`.
+The API and PACS Web Console are available at `http://localhost:8000`.
+
 
 
