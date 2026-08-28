@@ -85,16 +85,17 @@ def compute_mc_dropout_uncertainty(
     max_entropy = np.log2(num_classes)
     normalized_entropy = float(entropy / max_entropy)
 
-    # Clinical Alert Assessment
-    if normalized_entropy >= 0.60 or max_class_std >= 0.25:
+    # Clinical Alert Assessment based on joint confidence, predictive entropy, and epistemic variance
+    if normalized_entropy >= 0.50 or confidence < 0.65 or max_class_std >= 0.35:
         clinical_status = "HIGH_RISK_RADIOLOGIST_REVIEW"
-        status_description = "High predictive ambiguity. Automated diagnosis should NOT be used without specialist radiologist validation."
-    elif normalized_entropy >= 0.35 or max_class_std >= 0.12:
+        status_description = "High predictive ambiguity detected. Automated diagnosis should NOT be used without specialist radiologist validation."
+    elif normalized_entropy >= 0.25 or confidence < 0.85 or max_class_std >= 0.28:
         clinical_status = "MODERATE_AMBIGUITY"
         status_description = "Moderate uncertainty detected. Review scan attention regions and clinical history."
     else:
         clinical_status = "LOW_RISK_CONFIDENT"
         status_description = "Low epistemic uncertainty. Model predictions demonstrate stable stochastic convergence."
+
 
     prob_dict = {class_names[i]: float(base_pred[i]) for i in range(num_classes)}
     std_dict = {class_names[i]: float(std_probs[i]) for i in range(num_classes)}
