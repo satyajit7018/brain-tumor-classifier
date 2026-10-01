@@ -1,0 +1,6 @@
+{
+  "model": "baseline_cnn",
+  "epochs_trained": 25,
+  "final_val_loss": 0.07048210501670837,
+  "final_val_accuracy": 0.9833333492279053
+}

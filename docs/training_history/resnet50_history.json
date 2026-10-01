@@ -1,0 +1,6 @@
+{
+  "model": "resnet50",
+  "epochs_trained": 16,
+  "final_val_loss": 0.04055533558130264,
+  "final_val_accuracy": 0.9869047403335571
+}

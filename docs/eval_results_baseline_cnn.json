@@ -1,0 +1,80 @@
+{
+  "confusion_matrix": [
+    [
+      315,
+      47,
+      4,
+      34
+    ],
+    [
+      3,
+      379,
+      12,
+      6
+    ],
+    [
+      1,
+      0,
+      399,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      399
+    ]
+  ],
+  "classification_report": {
+    "glioma": {
+      "precision": 0.987460815047022,
+      "recall": 0.7875,
+      "f1-score": 0.8762169680111266,
+      "support": 400.0
+    },
+    "meningioma": {
+      "precision": 0.8896713615023474,
+      "recall": 0.9475,
+      "f1-score": 0.9176755447941889,
+      "support": 400.0
+    },
+    "pituitary": {
+      "precision": 0.9591346153846154,
+      "recall": 0.9975,
+      "f1-score": 0.9779411764705882,
+      "support": 400.0
+    },
+    "no_tumor": {
+      "precision": 0.908883826879271,
+      "recall": 0.9975,
+      "f1-score": 0.9511323003575686,
+      "support": 400.0
+    },
+    "accuracy": 0.9325,
+    "macro avg": {
+      "precision": 0.936287654703314,
+      "recall": 0.9325,
+      "f1-score": 0.9307414974083681,
+      "support": 1600.0
+    },
+    "weighted avg": {
+      "precision": 0.936287654703314,
+      "recall": 0.9325,
+      "f1-score": 0.9307414974083682,
+      "support": 1600.0
+    }
+  },
+  "roc_auc_per_class": {
+    "glioma": 0.9169999999999999,
+    "meningioma": 0.9893729166666667,
+    "pituitary": 0.9993229166666667,
+    "no_tumor": 0.997390625
+  },
+  "false_negative_rate": 0.03333333333333333,
+  "evaluation_split": {
+    "description": "Held-out Kaggle Testing split, never used for training, validation or early stopping.",
+    "n_test": 1600,
+    "n_train_pool": 5600,
+    "n_test_dropped_duplicates": 0
+  }
+}

@@ -2,42 +2,65 @@
 
 Multi-class brain MRI classification system comparing a custom CNN baseline against fine-tuned transfer learning models (ResNet50, EfficientNetB0) across four classes: glioma, meningioma, pituitary, and normal brain scans.
 
-The project follows a two-stage workflow: k-fold cross-validation (`scripts/train_all.py`) to compare architectures under controlled conditions, then full training with early stopping and learning rate scheduling (`scripts/train_final.py`) to produce the deployed champion model. Evaluation goes beyond accuracy — the system prioritizes False Negative Rate (missed tumors), provides Grad-CAM visual explainability, and estimates prediction confidence via Monte Carlo Dropout.
+Each model is trained with early stopping and learning-rate scheduling on the training split (`scripts/train_final.py`) and scored once on a held-out test split (`scripts/evaluate_final.py`). Optional k-fold cross-validation on the training split is available in `scripts/train_all.py`. Evaluation goes beyond accuracy — the system prioritizes False Negative Rate (missed tumors), provides Grad-CAM visual explainability, and estimates prediction confidence via Monte Carlo Dropout.
 
 **Disclaimer:** Research and educational code only. Not approved for diagnostic or clinical use. See `docs/MODEL_CARD.md`.
 
 ---
 
-## Champion Model Evaluation
+## Results on a held-out test set
 
-The champion ResNet50 was trained on the full 7,200-scan dataset with `ModelCheckpoint`, `EarlyStopping`, and `ReduceLROnPlateau`, then evaluated on all 7,200 scans (1,800 per class):
+All three models were trained on the dataset's official **Training** split (5,600 scans, 15% of
+it held back for validation and early stopping) and evaluated once on the official **Testing**
+split: 1,600 scans, 400 per class, never used for training, validation or model selection. Test
+images were checked against the training set by file hash: 0 exact duplicates.
 
-| Model Architecture | Test Accuracy | Macro F1-Score | False Negative Rate (FNR) | Mean ROC-AUC |
-| :--- | :--- | :--- | :--- | :--- |
-| Baseline CNN (from scratch) | 88.40% | 87.90% | 3.80% | 0.954 |
-| **ResNet50 (Fine-Tuned Champion)** | **96.19%** | **96.18%** | **0.44%** | **0.998** |
-| EfficientNetB0 (Fine-Tuned) | 91.75% | 91.50% | 1.85% | 0.976 |
+| Model | Test accuracy | Macro F1 | False negative rate | Mean ROC-AUC |
+| :--- | :---: | :---: | :---: | :---: |
+| Baseline CNN (from scratch) | 93.25% | 93.07% | 3.33% | 0.976 |
+| EfficientNetB0 (fine-tuned) | 93.75% | 93.63% | 2.58% | 0.989 |
+| **ResNet50 (fine-tuned)** | **94.81%** | **94.69%** | **2.50%** | **0.986** |
 
-### Confusion Matrix (Champion ResNet50 on 7,200 Scans)
+False negative rate = share of tumor scans predicted as `no_tumor` (missed tumors). Full metrics:
+[`docs/eval_results_resnet50.json`](docs/eval_results_resnet50.json),
+[`efficientnet_b0`](docs/eval_results_efficientnet_b0.json),
+[`baseline_cnn`](docs/eval_results_baseline_cnn.json). Trained on a Kaggle T4 GPU with
+[`brain_tumor_honest_eval.ipynb`](notebooks/brain_tumor_honest_eval.ipynb).
+
+### ResNet50 confusion matrix (1,600 test scans)
 
 ```text
-                  Predicted Glioma   Predicted Meningioma   Predicted Pituitary   Predicted No Tumor
-Actual Glioma           1,745                 25                    22                    8 (FN)
-Actual Meningioma          29              1,606                   158                    7 (FN)
-Actual Pituitary            1                  4                 1,786                    9 (FN)
-Actual No Tumor             7                  1                     3                1,789 (TN)
+                    Pred glioma   Pred meningioma   Pred pituitary   Pred no_tumor
+Actual glioma           328             41                 3              28  ← missed
+Actual meningioma         1            389                 8               2  ← missed
+Actual pituitary          0              0               400               0
+Actual no_tumor           0              0                 0             400
 ```
 
-### Detailed Per-Class Classification Report
-- **Glioma**: 97.92% Precision | 96.94% Recall | 97.43% F1-Score (ROC-AUC: 0.9987)
-- **Meningioma**: 98.17% Precision | 89.22% Recall | 93.48% F1-Score (ROC-AUC: 0.9955)
-- **Pituitary**: 90.71% Precision | 99.22% Recall | 94.77% F1-Score (ROC-AUC: 0.9992)
-- **No Tumor (Healthy Control)**: 98.68% Precision | 99.39% Recall | 99.03% F1-Score (ROC-AUC: 0.9999)
-- **Primary Clinical Metric (False Negative Rate)**: **0.44%** (Total 24 missed tumor cases out of 5,400 pathological scans = 99.56% sensitivity).
+| Class | Precision | Recall | F1 | ROC-AUC |
+| :--- | :---: | :---: | :---: | :---: |
+| Glioma | 99.7% | **82.0%** | 90.0% | 0.958 |
+| Meningioma | 90.5% | 97.2% | 93.7% | 0.986 |
+| Pituitary | 97.3% | 100.0% | 98.6% | 1.000 |
+| No tumor | 93.0% | 100.0% | 96.4% | 0.999 |
 
-*Exact evaluation metrics are stored in `docs/eval_results.json`.*
+### What these numbers do and don't show
 
+- **Glioma is the weak spot.** 28 of 400 gliomas (7%) were called `no_tumor`, and those account
+  for 28 of the 30 missed tumors. The overall 2.5% false negative rate hides this, so glioma
+  recall is the number to improve next.
+- **The models are close.** With 1,600 test scans, the 95% confidence interval on accuracy is
+  about ±1.1 points, so ResNet50's lead over EfficientNetB0 (+1.1 pts) is not clearly
+  significant. Each number comes from a single training run.
+- **Validation was optimistic.** ResNet50 reached 98.7% validation accuracy but 94.8% on test.
+  The validation images come from the same pool as the training images, so the official test
+  split is the more honest estimate.
+- **The CNN and EfficientNetB0 hit the 25-epoch cap** without early stopping, so they may improve
+  with longer training.
 
+> An earlier version of this README reported 96.2% accuracy and a 0.44% false negative rate.
+> Those numbers came from evaluating on images the model had been trained on, and have been
+> replaced by the held-out results above.
 
 ---
 
@@ -68,7 +91,7 @@ Actual No Tumor             7                  1                     3          
 ├── frontend/
 │   ├── app.py                  # Streamlit diagnostic interface
 │   └── web/                    # Standalone PACS Single-Page Web Application
-├── tests/                      # Unit & integration test suite (17 tests)
+├── tests/                      # Unit & integration test suite
 ├── docs/                       # Model cards, build plan, and evaluation artifacts
 └── Dockerfile                  # Container definition
 ```
@@ -87,7 +110,7 @@ pip install -r requirements.txt
 
 ### 2. Dataset Preparation
 
-Download the dataset from [Kaggle](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset) into `data/raw/` or run the automated downloader:
+Download the dataset from [Kaggle](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset) and organize it into `data/raw/` with the downloader. It prefixes every file with its original split (`Training_` / `Testing_`), which is how training and evaluation keep the test images separate:
 
 ```bash
 python scripts/download_dataset.py
@@ -100,7 +123,7 @@ python scripts/generate_sample_data.py --samples-per-class 20
 
 ### 3. Run Architecture Comparison (Optional)
 
-Compare all three architectures via k-fold cross-validation. This is useful for architecture selection but is not how the champion model's headline metrics were produced:
+Compare architectures with k-fold cross-validation on the training split (the test split is never used). The headline results above come from steps 4–5, not from this:
 ```bash
 python scripts/train_all.py --k-folds 3 --epochs 3
 ```
@@ -110,14 +133,18 @@ python scripts/train_all.py --k-folds 3 --epochs 3
 ```bash
 python scripts/train_final.py --model resnet50 --epochs 25
 ```
-Saves best weights to `saved_models/best_model.keras`.
+Trains on the `Training_*` images only and saves the best weights to
+`saved_models/best_model.keras`. No local GPU? Run
+[`notebooks/brain_tumor_honest_eval.ipynb`](notebooks/brain_tumor_honest_eval.ipynb) on Kaggle
+to train and evaluate all three models in about 30 minutes.
 
 ### 5. Evaluate and Export Explainability Heatmaps
 
 ```bash
 python scripts/evaluate_final.py
 ```
-Outputs `docs/eval_results.json` and 8 visual comparison images in `docs/gradcam_examples/`.
+Evaluates on the held-out `Testing_*` images and writes `docs/eval_results.json` plus 8
+Grad-CAM comparison images in `docs/gradcam_examples/`.
 
 ### 6. Run Test Suite
 
@@ -163,7 +190,3 @@ Build and start the containerized service:
 docker compose up -d --build
 ```
 The API and PACS Web Console are available at `http://localhost:8000`.
-
-
-
-

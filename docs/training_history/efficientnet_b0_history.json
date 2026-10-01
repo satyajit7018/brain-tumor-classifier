@@ -1,0 +1,6 @@
+{
+  "model": "efficientnet_b0",
+  "epochs_trained": 25,
+  "final_val_loss": 0.07478433847427368,
+  "final_val_accuracy": 0.9750000238418579
+}
