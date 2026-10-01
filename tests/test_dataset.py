@@ -12,6 +12,7 @@ from src.data.dataset import (
     check_class_balance,
     compute_class_weights,
     load_dataset_as_numpy,
+    split_by_source,
 )
 
 
@@ -54,6 +55,33 @@ class TestDatasetModule(unittest.TestCase):
         self.assertEqual(len(labels), 4)
         self.assertEqual(images.shape, (4, 32, 32, 3))
         self.assertTrue(0.0 <= images.min() <= images.max() <= 1.0)
+
+
+class TestSplitBySource(unittest.TestCase):
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        for i, cls in enumerate(CLASS_NAMES):
+            cls_path = os.path.join(self.test_dir, cls)
+            os.makedirs(cls_path, exist_ok=True)
+            Image.new("RGB", (8, 8), color=(i, 1, 1)).save(os.path.join(cls_path, "Training_a.png"))
+            Image.new("RGB", (8, 8), color=(i, 2, 2)).save(os.path.join(cls_path, "Testing_b.png"))
+        # A test image byte-identical to a training image must be dropped.
+        shutil.copy(
+            os.path.join(self.test_dir, "glioma", "Training_a.png"),
+            os.path.join(self.test_dir, "glioma", "Testing_dup.png"),
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_train_and_test_are_disjoint(self):
+        train, test, dropped = split_by_source(self.test_dir)
+        self.assertEqual(len(train), 4)
+        self.assertEqual(len(test), 4)
+        self.assertEqual(dropped, 1)
+        self.assertTrue(all(os.path.basename(p).startswith("Training_") for p, _ in train))
+        self.assertTrue(all(os.path.basename(p).startswith("Testing_") for p, _ in test))
+        self.assertFalse({p for p, _ in train} & {p for p, _ in test})
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import tensorflow as tf
-from src.data.dataset import load_datasets, check_class_balance, compute_class_weights, CLASS_NAMES
+from src.data.dataset import load_datasets, split_by_source, compute_class_weights, CLASS_NAMES
 from src.data.augmentation import apply_augmentation
 from src.train.train import MODEL_BUILDERS
 
@@ -26,7 +26,8 @@ def main():
     parser.add_argument("--data-dir", type=str, default="data/raw", help="Path to raw dataset directory")
     parser.add_argument("--epochs", type=int, default=25, help="Number of training epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
-    parser.add_argument("--val-split", type=float, default=0.2, help="Validation set split ratio")
+    parser.add_argument("--val-split", type=float, default=0.15,
+                        help="Fraction of the TRAINING split held out for validation/early stopping")
     parser.add_argument("--output-model", type=str, default="saved_models/best_model.keras", help="Path to save best model")
     parser.add_argument("--use-augmentation", action="store_true", default=True, help="Apply data augmentation during training")
     parser.add_argument("--use-class-weights", action="store_true", default=True, help="Apply inverse-frequency class weights")
@@ -53,13 +54,15 @@ def main():
         epochs = 1
     else:
         # Check dataset existence
-        balance = check_class_balance(args.data_dir)
+        train_items, test_items, n_dropped = split_by_source(args.data_dir)
+        balance = {cls: sum(1 for _, y in train_items if y == i) for i, cls in enumerate(CLASS_NAMES)}
         total_images = sum(balance.values())
         if total_images == 0:
             print(f"[ERROR] No images found in {args.data_dir}. Check dataset setup in Phase 1.")
             sys.exit(1)
 
-        print(f"[INFO] Dataset balance in {args.data_dir}: {balance} (Total: {total_images})")
+        print(f"[INFO] Training split balance: {balance} (Total: {total_images}). "
+              f"{len(test_items)} test images held out and never used here.")
 
         train_ds, val_ds = load_datasets(
             data_dir=args.data_dir,

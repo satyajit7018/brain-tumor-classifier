@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
-from src.data.dataset import load_dataset_as_numpy, CLASS_NAMES
+from src.data.dataset import split_by_source, load_images, CLASS_NAMES
 from src.train.train import run_kfold, MODEL_BUILDERS
 
 
@@ -41,8 +41,13 @@ def main():
         epochs = 1
         k_folds = 2
     else:
-        print(f"[INFO] Loading dataset from: {args.data_dir}")
-        images, labels = load_dataset_as_numpy(args.data_dir, max_samples_per_class=args.max_samples)
+        print(f"[INFO] Loading TRAINING split from: {args.data_dir} (test split is never used for CV)")
+        train_items, _, _ = split_by_source(args.data_dir)
+        if args.max_samples:
+            train_items = [it for c in range(len(CLASS_NAMES))
+                           for it in [i for i in train_items if i[1] == c][:args.max_samples]]
+        images, labels = load_images(train_items)
+        images = images.astype(np.float32) / 255.0
 
         if len(images) == 0:
             print(f"[ERROR] No images found in {args.data_dir} across {CLASS_NAMES}.")

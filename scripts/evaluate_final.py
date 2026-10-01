@@ -17,7 +17,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import cv2
 import numpy as np
 import tensorflow as tf
-from src.data.dataset import load_dataset_as_numpy, CLASS_NAMES
+from src.data.dataset import split_by_source, load_images, CLASS_NAMES
 from src.eval.metrics import evaluate_model
 from src.eval.gradcam import make_gradcam_heatmap, overlay_heatmap
 
@@ -52,8 +52,12 @@ def main():
         print(f"[INFO] Loading model from: {args.model_path}")
         model = tf.keras.models.load_model(args.model_path)
 
-        print(f"[INFO] Loading evaluation dataset from: {args.data_dir}")
-        images, labels = load_dataset_as_numpy(args.data_dir)
+        print(f"[INFO] Loading held-out test split from: {args.data_dir}")
+        train_items, test_items, n_dropped = split_by_source(args.data_dir)
+        print(f"[INFO] Test split: {len(test_items)} images "
+              f"({n_dropped} dropped as exact duplicates of training images)")
+        images, labels = load_images(test_items)
+        images = images.astype(np.float32) / 255.0
 
         if len(images) == 0:
             print(f"[ERROR] No evaluation images found in {args.data_dir}.")
@@ -65,6 +69,14 @@ def main():
 
     print("[INFO] Computing clinical metrics...")
     metrics = evaluate_model(y_true=labels, y_pred_probs=y_pred_probs)
+    if not args.dry_run:
+        metrics["evaluation_split"] = {
+            "description": "Held-out Kaggle Testing split, never used for training, "
+                           "validation or early stopping.",
+            "n_test": int(len(test_items)),
+            "n_train_pool": int(len(train_items)),
+            "n_test_dropped_duplicates": int(n_dropped),
+        }
 
     # Save to docs/eval_results.json
     with open(args.output_json, "w") as f:
