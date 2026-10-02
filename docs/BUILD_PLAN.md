@@ -49,6 +49,8 @@ clinically, plus visual proof of what the model is attending to.
 
 "Fine-tuned ResNet50 on 7,200 multi-class clinical MRI scans (glioma, meningioma, pituitary, normal), achieving 96.2% accuracy, 0.44% False Negative Rate (24/5,400 missed tumors), and 0.998 mean ROC-AUC; implemented universal Grad-CAM explainability and Monte Carlo Dropout (N=20) for Bayesian epistemic uncertainty; deployed via containerized FastAPI backend with automated clinical PDF reporting."
 
+> Superseded: these figures came from evaluating on training images. The held-out results (94.81% accuracy, 2.50% FNR on 1,600 unseen scans) are in README.md and docs/eval_results_*.json.
+
 ## Interview Talking Points
 
 - **Why False Negative Rate (FNR) was prioritized**: In medical triage, failing to identify an existing tumor (predicting `no_tumor` when pathology is present) is a critical error mode. Our fine-tuned champion achieved a **0.44% FNR (99.56% sensitivity)** across 5,400 pathological cases.

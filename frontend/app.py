@@ -130,10 +130,10 @@ except Exception:
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("""
-**🎯 Clinical Benchmark (7,200 Scans)**
-- **Test Accuracy**: `96.19%`
-- **False Negative Rate**: `0.44%` (99.56% Sensitivity)
-- **Mean ROC-AUC**: `0.998`
+**🎯 Held-out Test (1,600 unseen scans)**
+- **Test Accuracy**: `94.81%`
+- **False Negative Rate**: `2.50%` (97.50% Sensitivity)
+- **Mean ROC-AUC**: `0.986`
 
 **🔬 Explainability & Inference**
 - **Grad-CAM Layer**: `conv5_block3_out`
@@ -341,22 +341,22 @@ with tab_console:
 # TAB 2: Model Benchmarks & Confusion Matrix
 # =========================================================
 with tab_benchmarks:
-    st.markdown("### 🏆 Comprehensive Model Architecture Comparison (7,200 Scans)")
+    st.markdown("### 🏆 Model Comparison on the Held-out Test Split (1,600 scans)")
     
     benchmark_df = pd.DataFrame([
-        {"Model Architecture": "Baseline CNN (From Scratch)", "Parameters": "~2.1M", "Test Accuracy": "88.40%", "Macro F1": "87.90%", "False Negative Rate (FNR)": "3.80%", "Mean ROC-AUC": "0.954"},
-        {"Model Architecture": "ResNet50 (Fine-Tuned Champion)", "Parameters": "~24.1M", "Test Accuracy": "96.19%", "Macro F1": "96.18%", "False Negative Rate (FNR)": "0.44%", "Mean ROC-AUC": "0.998"},
-        {"Model Architecture": "EfficientNetB0 (Fine-Tuned)", "Parameters": "~4.3M", "Test Accuracy": "91.75%", "Macro F1": "91.50%", "False Negative Rate (FNR)": "1.85%", "Mean ROC-AUC": "0.976"},
+        {"Model Architecture": "Baseline CNN (From Scratch)", "Parameters": "~2.1M", "Test Accuracy": "93.25%", "Macro F1": "93.07%", "False Negative Rate (FNR)": "3.33%", "Mean ROC-AUC": "0.976"},
+        {"Model Architecture": "ResNet50 (Fine-Tuned Champion)", "Parameters": "~24.1M", "Test Accuracy": "94.81%", "Macro F1": "94.69%", "False Negative Rate (FNR)": "2.50%", "Mean ROC-AUC": "0.986"},
+        {"Model Architecture": "EfficientNetB0 (Fine-Tuned)", "Parameters": "~4.3M", "Test Accuracy": "93.75%", "Macro F1": "93.63%", "False Negative Rate (FNR)": "2.58%", "Mean ROC-AUC": "0.989"},
     ])
     st.table(benchmark_df)
 
-    st.markdown("### 🔢 Confusion Matrix (ResNet50 Champion on 7,200 Clinical Scans)")
+    st.markdown("### 🔢 Confusion Matrix (ResNet50 on 1,600 held-out scans)")
     cm_df = pd.DataFrame(
         [
-            [1745, 25, 22, 8],
-            [29, 1606, 158, 7],
-            [1, 4, 1786, 9],
-            [7, 1, 3, 1789],
+            [328, 41, 3, 28],
+            [1, 389, 8, 2],
+            [0, 0, 400, 0],
+            [0, 0, 0, 400],
         ],
         index=["Actual Glioma", "Actual Meningioma", "Actual Pituitary", "Actual No Tumor"],
         columns=["Predicted Glioma", "Predicted Meningioma", "Predicted Pituitary", "Predicted No Tumor"]
@@ -366,13 +366,13 @@ with tab_benchmarks:
     st.markdown("### 🎯 Key Clinical Performance Indicators")
     k1, k2, k3, k4 = st.columns(4)
     with k1:
-        st.metric("Tumor Sensitivity", "99.56%", help="Only 24 missed tumor cases out of 5,400 pathological scans.")
+        st.metric("Tumor Sensitivity", "97.50%", help="30 missed tumor cases out of 1,200 pathological test scans (28 of them gliomas).")
     with k2:
-        st.metric("Healthy Control Specificity", "99.39%", help="1,789 correct healthy scans out of 1,800.")
+        st.metric("Healthy Control Specificity", "100.00%", help="400 of 400 healthy test scans correctly called no tumor.")
     with k3:
-        st.metric("Clinical False Negative Rate", "0.44%", help="Prioritized clinical triage metric.")
+        st.metric("Clinical False Negative Rate", "2.50%", help="Prioritized clinical triage metric. Glioma recall is the weak spot at 82%.")
     with k4:
-        st.metric("Mean Multi-Class ROC-AUC", "0.998", help="Area under receiver operating characteristic curve.")
+        st.metric("Mean Multi-Class ROC-AUC", "0.986", help="Area under receiver operating characteristic curve, averaged over the four classes.")
 
 # =========================================================
 # TAB 3: Model Card & Safety Scope
@@ -388,7 +388,7 @@ with tab_modelcard:
     #### 2. Clinical Decision Hierarchy (False Negative Minimization)
     In neurological imaging, a **False Negative** (predicting `no_tumor` when pathology is present) carries catastrophic consequences compared to a False Positive (which triggers secondary radiologist confirmation). The model was trained with **inverse-frequency class weighting** to penalize false negatives severely.
     
-    $$\\text{FNR} = \\frac{\\text{Pathological scans predicted as No Tumor}}{\\text{Total Pathological Scans}} = \\frac{24}{5400} = 0.44\\%$$
+    $$\\text{FNR} = \\frac{\\text{Pathological scans predicted as No Tumor}}{\\text{Total Pathological Scans}} = \\frac{30}{1200} = 2.50\\%$$
     
     #### 3. Epistemic Uncertainty & Safety Thresholds
     Monte Carlo Dropout is restricted to the dense classification head to preserve batch normalization statistics. Predictions are flagged based on three criteria:
